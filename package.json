@@ -1,0 +1,15 @@
+{
+   "name": "zero",
+   "version": "1.0.0",
+   "description": "",
+   "main": "lib/js/src/main.js",
+   "scripts": {
+      "clean": "bsb -clean-world",
+      "build": "bsb -make-world",
+      "watch": "bsb -make-world -w",
+      "app": "bsb -make-world && node ./lib/js/src/main.js",
+      "go": "node ./lib/js/src/main.js"
+   },
+   "author": "",
+   "license": "ISC"
+}
