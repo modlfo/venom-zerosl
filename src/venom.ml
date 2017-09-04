@@ -101,6 +101,29 @@ let setOsc2Sync t value =
    let value = setUnset t ~mask:0x02 value in
    send t.port t.part 0x18 value
 
+let setOsc3Level t value =
+   send t.port t.part 0x66 value
+
+let setOsc3Keytrack t value =
+   let value = setUnsetInverse t ~mask:0x20 value in
+   send t.port t.part 0x18 value
+
+let setOsc3Wave t value =
+   send t.port t.part 0x21 value
+
+let setOsc3Coarse t value =
+   send t.port t.part 0x22 value
+
+let setOsc3Fine t value =
+   send t.port t.part 0x23 value
+
+let setOsc3Sync t value =
+   let value = setUnset t ~mask:0x04 value in
+   send t.port t.part 0x18 value
+
+
+let setDrift t value =
+   send t.port t.part 0x14 value
 
 let setStartMod t value =
    send t.port t.part 0x13 value
@@ -108,12 +131,21 @@ let setStartMod t value =
 let setOsc1FM3 t value =
    send t.port t.part 0x17 value
 
+let setRingMod t value =
+   send t.port t.part 0x16 value
+
+let setExtLevel t value =
+   send t.port t.part 0x67 value
+
+let setExtInput t value =
+   send t.port t.part 0x68 value
+
 let setWaveshape t value =
    let state = setUnset t ~mask:0x01 value in
    send t.port t.part 0x18 state;
    send t.port t.part 0x19 value
 
-(* Fitler *)
+(* Filter *)
 
 let setFilterBoost t value =
    send t.port t.part 0x20 value
@@ -126,5 +158,55 @@ let setCutoff t value =
    send t.port t.part 0x6B value
 
 let setResonance t value =
-   send t.port t.part 0x6C value;
+   send t.port t.part 0x6C value
 
+(* Env 1 *)
+
+let setEnv1Attack t value =
+   send t.port t.part 0x04 value
+
+let setEnv1Hold t value =
+   send t.port t.part 0x05 value
+
+let setEnv1Decay t value =
+   send t.port t.part 0x06 value
+
+let setEnv1Sustain t value =
+   send t.port t.part 0x07 value
+
+let setEnv1Release t value =
+   send t.port t.part 0x08 value
+
+(* Env 2 *)
+
+let setEnv2Attack t value =
+   send t.port t.part 0x09 value
+
+let setEnv2Hold t value =
+   send t.port t.part 0x0A value
+
+let setEnv2Decay t value =
+   send t.port t.part 0x0B value
+
+let setEnv2Sustain t value =
+   send t.port t.part 0x0C value
+
+let setEnv2Release t value =
+   send t.port t.part 0x0D value
+
+(* Env 3 *)
+
+let setEnv3Attack t value =
+   send t.port t.part 0x0E value
+
+let setEnv3Hold t value =
+   send t.port t.part 0x0F value
+
+let setEnv3Decay t value =
+   send t.port t.part 0x10 value
+
+let setEnv3Sustain t value =
+   send t.port t.part 0x11 value
+
+let setEnv3Release t value =
+   send t.port t.part 0x12 value

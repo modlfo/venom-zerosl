@@ -33,7 +33,7 @@ let groups =
             numericEncoder    "Fine" 4 ~min:(-64.0) ~max:63.0 0.0;
             percentualEncoder "Osc3>FM" 5 ~min:0.0 ~max:1.0 0.0;
             percentualEncoder "Waveshape" 6 ~min:0.0 ~max:1.0 0.0;
-            blank 7;
+            percentualEncoder "RingMod" 7 ~min:0.0 ~max:1.0 0.0;
             percentualEncoder "Level" 8 ~min:0.0 ~max:1.0 1.0;
          |];
       newGroup "Osc2" ~choke:1 ~active:false
@@ -43,8 +43,8 @@ let groups =
             numericEncoder    "Coarse" 3 ~min:(-64.0) ~max:63.0 0.0;
             numericEncoder    "Fine" 4 ~min:(-64.0) ~max:63.0 0.0;
             enumEncoder       "Sync" 5 [|"Off"; "On"|] 1;
-            percentualEncoder "StartMod" 6 ~min:0.0 ~max:1.0 0.0;
-            blank 7;
+            percentualEncoder "ExtLevel" 6 ~min:0.0 ~max:1.0 0.0;
+            enumEncoder       "ExtInput" 7 [|"Off"; "In L"; "In R"; "In L+R"; "USB L"; "USB R"; "USB L+R"|] 0;
             percentualEncoder "Level" 8 ~min:0.0 ~max:1.0 0.0;
          |];
       newGroup "Osc3" ~choke:1 ~active:false
@@ -55,7 +55,7 @@ let groups =
             numericEncoder    "Fine" 4 ~min:(-64.0) ~max:63.0 0.0;
             enumEncoder       "Sync" 5 [|"Off"; "On"|] 1;
             percentualEncoder "Drift" 6 ~min:0.0 ~max:1.0 0.0;
-            blank 7;
+            percentualEncoder "StartMod" 7 ~min:0.0 ~max:1.0 0.0;
             percentualEncoder "Level" 8 ~min:0.0 ~max:1.0 0.0;
          |];
       newGroup "Env1" ~choke:1 ~active:false
@@ -139,6 +139,8 @@ let osc1Actions parameter =
          Venom.setOsc1Level venom (Zero.paramInt parameter)
       | "/Osc1/Waveshape" ->
          Venom.setWaveshape venom (Zero.paramInt parameter)
+      | "/Osc1/RingMod" ->
+         Venom.setRingMod venom (Zero.paramInt parameter)
       | _ -> ()
    in parameter
 
@@ -157,8 +159,80 @@ let osc2Actions parameter =
          Venom.setOsc2Sync venom (Zero.paramInt parameter)
       | "/Osc2/Level" ->
          Venom.setOsc2Level venom (Zero.paramInt parameter)
-      | "/Osc2/StartMod" ->
+      | "/Osc2/ExtLevel" ->
+         Venom.setExtLevel venom (Zero.paramInt parameter)
+      | "/Osc2/ExtInput" ->
+         Venom.setExtInput venom (Zero.paramInt parameter)
+      | _ -> ()
+   in parameter
+
+let osc3Actions parameter =
+   let () =
+      match Zero.paramPath parameter with
+      | "/Osc3/Wave" ->
+         Venom.setOsc3Wave venom (Zero.paramInt parameter)
+      | "/Osc3/Keytrack" ->
+         Venom.setOsc3Keytrack venom (Zero.paramInt parameter)
+      | "/Osc3/Coarse" ->
+         Venom.setOsc3Coarse venom (Zero.paramInt parameter)
+      | "/Osc3/Fine" ->
+         Venom.setOsc3Fine venom (Zero.paramInt parameter)
+      | "/Osc3/Sync" ->
+         Venom.setOsc3Sync venom (Zero.paramInt parameter)
+      | "/Osc3/Level" ->
+         Venom.setOsc3Level venom (Zero.paramInt parameter)
+      | "/Osc3/Drift" ->
+         Venom.setDrift venom (Zero.paramInt parameter)
+      | "/Osc3/StartMod" ->
          Venom.setStartMod venom (Zero.paramInt parameter)
+      | _ -> ()
+   in parameter
+
+let env1Actions parameter =
+   let () =
+      match Zero.paramPath parameter with
+      | "/Env1/Attack" ->
+         Venom.setEnv1Attack venom (Zero.paramInt parameter)
+      | "/Env1/Hold" ->
+         Venom.setEnv1Hold venom (Zero.paramInt parameter)
+      | "/Env1/Decay" ->
+         Venom.setEnv1Decay venom (Zero.paramInt parameter)
+      | "/Env1/Sustain" ->
+         Venom.setEnv1Sustain venom (Zero.paramInt parameter)
+      | "/Env1/Release" ->
+         Venom.setEnv1Release venom (Zero.paramInt parameter)
+      | _ -> ()
+   in parameter
+
+let env2Actions parameter =
+   let () =
+      match Zero.paramPath parameter with
+      | "/Env2/Attack" ->
+         Venom.setEnv2Attack venom (Zero.paramInt parameter)
+      | "/Env2/Hold" ->
+         Venom.setEnv2Hold venom (Zero.paramInt parameter)
+      | "/Env2/Decay" ->
+         Venom.setEnv2Decay venom (Zero.paramInt parameter)
+      | "/Env2/Sustain" ->
+         Venom.setEnv2Sustain venom (Zero.paramInt parameter)
+      | "/Env2/Release" ->
+         Venom.setEnv2Release venom (Zero.paramInt parameter)
+      | _ -> ()
+   in parameter
+
+let env3Actions parameter =
+   let () =
+      match Zero.paramPath parameter with
+      | "/Env3/Attack" ->
+         Venom.setEnv3Attack venom (Zero.paramInt parameter)
+      | "/Env3/Hold" ->
+         Venom.setEnv3Hold venom (Zero.paramInt parameter)
+      | "/Env3/Decay" ->
+         Venom.setEnv3Decay venom (Zero.paramInt parameter)
+      | "/Env3/Sustain" ->
+         Venom.setEnv3Sustain venom (Zero.paramInt parameter)
+      | "/Env3/Release" ->
+         Venom.setEnv3Release venom (Zero.paramInt parameter)
       | _ -> ()
    in parameter
 
@@ -190,6 +264,10 @@ let action (groups:Zero.groups) parameter =
          |> filterActions
          |> osc1Actions
          |> osc2Actions
+         |> osc3Actions
+         |> env1Actions
+         |> env2Actions
+         |> env3Actions
       in
       groups
 
