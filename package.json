@@ -8,7 +8,15 @@
       "build": "bsb -make-world",
       "watch": "bsb -make-world -w",
       "app": "bsb -make-world && node ./lib/js/src/main.js",
-      "go": "node ./lib/js/src/main.js"
+      "go": "node ./lib/js/src/main.js",
+      "pack": "bsb -make-world && browserify --bare ./lib/js/src/main.js -o main.js"
+   },
+   "dependencies": {
+      "midi": "^0.9.5"
+   },
+   "devDependencies": {
+      "bs-platform": "~1.9.1",
+      "browserify ": "~14.4.0"
    },
    "author": "",
    "license": "ISC"
