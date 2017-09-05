@@ -3,9 +3,10 @@ let showPorts () =
    Remidi.getOutputNames () |> String.concat "\n"
    |> print_endline
 
-let makeBotton index = Zero.Left, Zero.Bottom, index + 1
+let makeBotton row index = Zero.Left, row, index + 1
 
 let lfo_waves = [|"Sine"; "Sine+"; "Triangle"; "Sawtooth"; "Square"; "S&H"; "LinS&H"; "LogS&H"; "ExpSqr"; "LogSqr"; "LogSaw"; "ExpSaw"|]
+let lfo_rates = Array.append (Array.init 111 (fun i -> Printf.sprintf "%.3f" (float_of_int i /. 110.0))) [|"1/32"; "1/24";"1/16";"1/12";"1/8";"1/6";"3/16";"1/4";"1/3";"3/8";"1/2";"3/4";"1/1";"3/2";"2/1";"3/1";"4/1"|]
 let osc_waves =
    [|
       "HP Sine"; "PB Sine"; "RP Sine";
@@ -19,98 +20,107 @@ let osc_waves =
       "AL FM Bass"; "AL FM Quack"; "AL FM Woody"; "AL FM Science"; "AL FM O1"; "AL FM O2"; "AL FM Inharmonic";
       "MG White Noise"|]
 
+let selectorTop = [| "Osc1"; "Osc2"; "Osc3"; "Env1"; "Env2"; "Env3"; "LFO1"; "LFO2" |]
+let selectorBottom = [| "Voice"; "Pitch"; "AMod"; "Insert"; "Channel"; "Eq"; "Aux1"; "Aux2" |]
+let buttonsTop = Array.init 8 (makeBotton Zero.Top)
+let buttonsBottom = Array.init 8 (makeBotton Zero.Bottom)
+
 let groups =
    Zero.[|
       newGroup "Global" ~choke:0 ~active:true
          [|
-            radioButton "Selector" (Array.init 8 makeBotton) [|"Osc1"; "Osc2"; "Osc3"; "Env1"; "Env2"; "Env3"; "LFO1"; "LFO2"|] 1;
+            radioButton "Selector" (Array.append buttonsTop buttonsBottom) (Array.append selectorTop selectorBottom) 1;
          |];
       newGroup "Osc1" ~choke:1 ~active:true
          [|
-            enumEncoder       "Wave" 1 osc_waves 1;
-            enumEncoder       "Keytrack" 2 [|"Off"; "On"|] 2;
-            numericEncoder    "Coarse" 3 ~min:(-64.0) ~max:63.0 0.0;
-            numericEncoder    "Fine" 4 ~min:(-64.0) ~max:63.0 0.0;
-            percentualEncoder "Osc3>FM" 5 ~min:0.0 ~max:1.0 0.0;
+            enumEncoder       "Wave"      1 osc_waves 1;
+            enumEncoder       "Keytrack"  2 [|"Off"; "On"|] 2;
+            numericEncoder    "Coarse"    3 ~min:(-64.0) ~max:63.0 0.0;
+            numericEncoder    "Fine"      4 ~min:(-64.0) ~max:63.0 0.0;
+            percentualEncoder "Osc3>FM"   5 ~min:0.0 ~max:1.0 0.0;
             percentualEncoder "Waveshape" 6 ~min:0.0 ~max:1.0 0.0;
-            percentualEncoder "RingMod" 7 ~min:0.0 ~max:1.0 0.0;
-            percentualEncoder "Level" 8 ~min:0.0 ~max:1.0 1.0;
+            percentualEncoder "RingMod"   7 ~min:0.0 ~max:1.0 0.0;
+            percentualEncoder "Level"     8 ~min:0.0 ~max:1.0 1.0;
          |];
       newGroup "Osc2" ~choke:1 ~active:false
          [|
-            enumEncoder       "Wave" 1 osc_waves 1;
+            enumEncoder       "Wave"     1 osc_waves 1;
             enumEncoder       "Keytrack" 2 [|"Off"; "On"|] 2;
-            numericEncoder    "Coarse" 3 ~min:(-64.0) ~max:63.0 0.0;
-            numericEncoder    "Fine" 4 ~min:(-64.0) ~max:63.0 0.0;
-            enumEncoder       "Sync" 5 [|"Off"; "On"|] 1;
+            numericEncoder    "Coarse"   3 ~min:(-64.0) ~max:63.0 0.0;
+            numericEncoder    "Fine"     4 ~min:(-64.0) ~max:63.0 0.0;
+            enumEncoder       "Sync"     5 [|"Off"; "On"|] 1;
             percentualEncoder "ExtLevel" 6 ~min:0.0 ~max:1.0 0.0;
             enumEncoder       "ExtInput" 7 [|"Off"; "In L"; "In R"; "In L+R"; "USB L"; "USB R"; "USB L+R"|] 0;
-            percentualEncoder "Level" 8 ~min:0.0 ~max:1.0 0.0;
+            percentualEncoder "Level"    8 ~min:0.0 ~max:1.0 0.0;
          |];
       newGroup "Osc3" ~choke:1 ~active:false
          [|
-            enumEncoder       "Wave" 1 osc_waves 1;
+            enumEncoder       "Wave"     1 osc_waves 1;
             enumEncoder       "Keytrack" 2 [|"Off"; "On"|] 2;
-            numericEncoder    "Coarse" 3 ~min:(-64.0) ~max:63.0 0.0;
-            numericEncoder    "Fine" 4 ~min:(-64.0) ~max:63.0 0.0;
-            enumEncoder       "Sync" 5 [|"Off"; "On"|] 1;
-            percentualEncoder "Drift" 6 ~min:0.0 ~max:1.0 0.0;
+            numericEncoder    "Coarse"   3 ~min:(-64.0) ~max:63.0 0.0;
+            numericEncoder    "Fine"     4 ~min:(-64.0) ~max:63.0 0.0;
+            enumEncoder       "Sync"     5 [|"Off"; "On"|] 1;
+            percentualEncoder "Drift"    6 ~min:0.0 ~max:1.0 0.0;
             percentualEncoder "StartMod" 7 ~min:0.0 ~max:1.0 0.0;
-            percentualEncoder "Level" 8 ~min:0.0 ~max:1.0 0.0;
+            percentualEncoder "Level"    8 ~min:0.0 ~max:1.0 0.0;
          |];
       newGroup "Env1" ~choke:1 ~active:false
          [|
-            numericEncoder "Attack" 1 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Hold" 2 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Decay" 3 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Attack"  1 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Hold"    2 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Decay"   3 ~min:(0.0) ~max:1.0 0.0;
             numericEncoder "Sustain" 4 ~min:(0.0) ~max:1.0 1.0;
             numericEncoder "Release" 5 ~min:(0.0) ~max:1.0 0.0;
             blank 6; blank 7; blank 8;
          |];
       newGroup "Env2" ~choke:1 ~active:false
          [|
-            numericEncoder "Attack" 1 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Hold" 2 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Decay" 3 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Attack"  1 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Hold"    2 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Decay"   3 ~min:(0.0) ~max:1.0 0.0;
             numericEncoder "Sustain" 4 ~min:(0.0) ~max:1.0 1.0;
             numericEncoder "Release" 5 ~min:(0.0) ~max:1.0 0.0;
             blank 6; blank 7; blank 8;
          |];
       newGroup "Env3" ~choke:1 ~active:false
          [|
-            numericEncoder "Attack" 1 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Hold" 2 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Decay" 3 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Attack"  1 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Hold"    2 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Decay"   3 ~min:(0.0) ~max:1.0 0.0;
             numericEncoder "Sustain" 4 ~min:(0.0) ~max:1.0 1.0;
             numericEncoder "Release" 5 ~min:(0.0) ~max:1.0 0.0;
             blank 6; blank 7; blank 8;
          |];
       newGroup "LFO1" ~choke:1 ~active:false
          [|
-            enumEncoder    "Wave" 1 lfo_waves 1;
-            enumEncoder    "Sync" 2 [|"Off"; "On"|] 1;
-            numericEncoder "Rate" 3 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Delay" 4 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Attack" 5 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Start" 6 ~min:(0.0) ~max:1.0 0.0;
-            blank 7; blank 8;
+            enumEncoder    "Wave"   1 lfo_waves 1;
+            enumEncoder    "Rate"   2 lfo_rates 1;
+            numericEncoder "Delay"  3 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Attack" 4 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Start"  5 ~min:(0.0) ~max:1.0 0.0;
+            blank 6; blank 7; blank 8;
          |];
       newGroup "LFO2" ~choke:1 ~active:false
          [|
-            enumEncoder    "Wave" 1 lfo_waves 1;
-            enumEncoder    "Sync" 2 [|"Off"; "On"|] 1;
-            numericEncoder "Rate" 3 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Delay" 4 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Attack" 5 ~min:(0.0) ~max:1.0 0.0;
-            numericEncoder "Start" 6 ~min:(0.0) ~max:1.0 0.0;
-            blank 7; blank 8;
+            enumEncoder    "Wave"   1 lfo_waves 1;
+            enumEncoder    "Rate"   2 lfo_rates 1;
+            numericEncoder "Delay"  3 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Attack" 4 ~min:(0.0) ~max:1.0 0.0;
+            numericEncoder "Start"  5 ~min:(0.0) ~max:1.0 0.0;
+            enumEncoder    "LFO3Wave" 6 lfo_waves 1;
+            enumEncoder    "LFO3Rate" 7 lfo_rates 1;
+            blank 8;
+         |];
+      newGroup "Voice" ~choke:1 ~active:true
+         [|
+            enumKnob    "Mode" 1 [|"Mono"; "Poly";|] 2;
          |];
       newGroup "Filter" ~choke:3 ~active:true
          [|
-            numericKnob "Cutoff" 1 ~min:(0.0) ~max:1.0 0.0;
+            numericKnob "Cutoff"    1 ~min:(0.0) ~max:1.0 0.0;
             numericKnob "Resonance" 2 ~min:(0.0) ~max:1.0 0.0;
-            enumKnob    "Type" 3 [|"Off"; "LP 12"; "BP 12"; "HP 12"; "LP 24"; "BP 24"; "HP 24"|] 2;
-            numericKnob "Boost" 4 ~min:(0.0) ~max:1.0 0.0;
+            enumKnob    "Type"      3 [|"Off"; "LP 12"; "BP 12"; "HP 12"; "LP 24"; "BP 24"; "HP 24"|] 2;
+            numericKnob "Boost"     4 ~min:(0.0) ~max:1.0 0.0;
          |];
    |]
 
