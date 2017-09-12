@@ -31,9 +31,13 @@ type kind =
 
    | Blank of column
 
+type display_function =
+   | Percent
+   | Numeric
+
 type value =
    | Bool of bool
-   | Float of (float -> float -> float -> string) * float * float * float
+   | Float of display_function * float * float * float
    | Enum of string array * float * float
 
 type parameter =
@@ -50,18 +54,20 @@ type parameters = parameter array
 type group =
    {
       name : string;
-      parameters: parameters;
+      subs: sub array;
       choke : int;
       active : bool;
    }
 
-type groups = group array
+and sub =
+   | Parameter of parameter
+   | Group of group
 
 type t =
    {
       input : Remidi.input;
       output : Remidi.output;
-      groups : groups;
+      groups : group;
    }
 
 (* Contains the basic operations to control the Zero *)
@@ -97,7 +103,7 @@ module Primitives = struct
          | Left, Top -> 24
          | Left, Bottom -> 32
          | Right, Top -> 40
-         | Right, Bottom -> 49
+         | Right, Bottom -> 48
       in
       Remidi.sendMessageList t.output [176; start + column - 1; if value then 1 else 0]
 
@@ -307,9 +313,16 @@ let applyRelValue (parameter:parameter) (msg:int) : parameter =
    in
    { parameter with value }
 
+let percentFormat min max v =
+   (Printf.sprintf "%.2f" (((min +. v *. (max -. min) /. 127.0) *. 100.0))) ^" %"
+
+let numberFormat min max v =
+   Printf.sprintf "%.2f" ((((min +. v *. (max -. min) /. 127.0))))
+
 let paramString (parameter:parameter) =
    match parameter.value with
-   | Float (f, min, max, v) -> f min max v
+   | Float (Percent, min, max, v) -> percentFormat min max v
+   | Float (Numeric, min, max, v) -> numberFormat min max v
    | Bool v -> if v then "on" else "off"
    | Enum (elems, n, index) ->
       if index >= n then print_endline (string_of_float index);
@@ -389,40 +402,102 @@ let paramDisplay (t:t) (parameter:parameter) : unit =
       Primitives.writeLabel t "" Left Bottom column;
       Primitives.setRing t column 0
 
+let subName (sub:sub) : string =
+   match sub with
+   | Parameter s -> s.name
+   | Group g -> g.name
 
-let groupFind (groups:groups) (name:string) : group option =
-   let group_index = ref None in
-   Array.iteri (fun i g -> if g.name = name then group_index := Some i) groups;
-   match !group_index with
-   | None -> None
-   | Some index -> Some (Array.get groups index)
+let subSubs (sub:sub) : sub array =
+   match sub with
+   | Parameter _ -> [||]
+   | Group g -> g.subs
+
+let array_find (f:'a -> bool) (a:'a array) : 'a option =
+   let rec loop i f a =
+      if i < Array.length a then
+         let e = Array.get a i in
+         if f e then Some e
+         else loop (i+1) f a
+      else None
+   in loop 0 f a
 
 
-let paramFind (groups:groups) (group_name:string) (name:string) : parameter option =
-   match groupFind groups group_name with
-   | None -> None
-   | Some group ->
-      let param_index = ref None in
-      Array.iteri (fun i p -> if paramName p = name then param_index := Some i) group.parameters;
-      match !param_index with
-      | None -> None
-      | Some index ->
-         Some (Array.get group.parameters index)
+let rec mapGroup (f:sub -> sub) (a:sub) : sub =
+   match a with
+   | Parameter _ -> f a
+   | Group g ->
+      let subs = Array.map (mapGroup f) g.subs in
+      f (Group { g with subs })
 
+let rec foldGroup (f:'a -> sub -> 'a) (a:'a) (e:sub) : 'a =
+   match e with
+   | Parameter _ -> f a e
+   | Group g ->
+      let a = Array.fold_left f a g.subs in
+      foldGroup f a e
 
-let groupSetActive (groups:groups) (name:string) : groups =
-   match groupFind groups name with
-   | Some group ->
-      let choke = group.choke in
-      Array.map
-         (fun g ->
-             if g.name = name then
-                { g with active = true }
-             else if g.choke = choke then
-                { g with active = false}
-             else g)
-         groups
-   | None -> groups
+let find (group:group) (name:string list) : sub list option =
+   let rec loop acc group name =
+      match name with
+      | [] -> None
+      | [h] ->
+         begin match array_find (fun a -> subName a = h) group.subs with
+            | Some sub -> Some (sub :: acc)
+            | None -> None
+         end
+      | h :: t ->
+         match array_find (fun a -> subName a = h) group.subs with
+         | Some ((Group g) as sub) -> loop (sub :: acc) g t
+         | _ -> None
+   in
+   loop [] group name
+
+let mapSingle (group:group) (f:sub -> sub) (name:string list) =
+   match find group name with
+   | Some (sub :: _) ->
+      let update s = if compare s sub = 0 then f s else s in
+      begin match mapGroup update (Group group) with
+         | Group g -> Some g
+         | _ -> None
+      end
+   | _ -> None
+
+let groupFind (group:group) (name:string list) : sub list option =
+   match find group name with
+   | Some (Group _ :: _) as r -> r
+   | _ -> None
+
+let paramFind (group:group) (name:string list) : sub list option =
+   match find group name with
+   | Some (Parameter _ :: _ ) as r -> r
+   | _ -> None
+
+let groupSetActive (group:group) (name:string list) =
+   let choke =
+      match find group name with
+      | Some (Group h :: _) -> h.choke
+      | _ -> -1000
+   in
+   let deactivate a =
+      match a with
+      | Group p when p.choke = choke -> Group { p with active = false }
+      | _ -> a
+   in
+   match mapGroup deactivate (Group group) with
+   | Group g ->
+      let res =
+         mapSingle g
+            (fun g ->
+                match g with
+                | Group p -> Group { p with active = true }
+                | _ -> g)
+            name
+      in
+      begin match res with
+         | Some g -> g
+         | None -> group
+      end
+   | _ -> group
 
 
 let applyMessageToParam (msg:midi_message) (modified:parameter list) (parameter:parameter) : parameter list * parameter =
@@ -492,27 +567,23 @@ let applyMessageToParam (msg:midi_message) (modified:parameter list) (parameter:
    | BottonMsg _, _ -> modified, parameter
 
 
-let applyMessageToGroup (msg:midi_message) (modified:parameter list) (group:group) : parameter list * group =
+let rec applyMessage (msg:midi_message) (modified:parameter list) (group:group) =
    if group.active then
       let modified, rev_parameters =
          Array.fold_left
-            (fun (modified, acc) p ->
-                let modified, new_p = applyMessageToParam msg modified p in
-                modified, new_p :: acc) (modified,[]) group.parameters
+            (fun (modified, acc) (p:sub) ->
+                match p with
+                | Parameter param ->
+                   let modified, new_p = applyMessageToParam msg modified param in
+                   modified, Parameter new_p :: acc
+                | Group g ->
+                   let modified, new_g = applyMessage msg modified g in
+                   modified, Group new_g :: acc)
+            (modified,[]) group.subs
       in
-      modified, { group with parameters = List.rev rev_parameters |> Array.of_list }
+      modified, { group with subs = List.rev rev_parameters |> Array.of_list }
    else
       modified, group
-
-let applyMessage (msg:midi_message) (modified:parameter list) (groups:groups) : parameter list * groups =
-   let modified, rev_groups =
-      Array.fold_left
-         (fun (modified, acc) g ->
-             let modified, new_g = applyMessageToGroup msg modified g in
-             modified, new_g :: acc)
-         (modified, []) groups
-   in
-   modified, List.rev rev_groups |> Array.of_list
 
 (** ==== Updating ===== *)
 
@@ -531,67 +602,75 @@ let compare_parameter (p1:parameter) (p2:parameter) : int =
       end
    | n -> n
 
-let showGroup t (group:group) : unit =
+let rec compare_group (g1:group) (g2:group) : int =
+   match compare g1.name g2.name with
+   | 0 ->
+      let rec loop s1 s2 =
+         match s1, s2 with
+         | [], [] -> 0
+         | h1 :: t1, h2 :: t2 ->
+            let res =
+               match h1, h2 with
+               | Parameter p1, Parameter p2 -> compare_parameter p1 p2
+               | Group g1, Group g2 -> compare_group g1 g2
+               | Parameter _, _ -> -1
+               | Group _, _ -> 1
+            in
+            if res = 0 then res else loop t1 t2
+         | [], _ -> -1
+         | _, [] -> 1
+      in loop (Array.to_list g1.subs) (Array.to_list g2.subs)
+   | n -> n
+
+let rec forcedUpdateSub t sub =
+   match sub with
+   | Parameter p -> paramDisplay t p
+   | Group g -> forceUpdateGroup t g
+
+and forceUpdateGroup t group =
    if group.active then
-      Array.iter (fun p -> paramDisplay t p) group.parameters
+      Array.iter (fun sub -> forcedUpdateSub t sub) group.subs
 
-let showGroups t groups : unit =
-   Array.iter (showGroup t) groups
-
-let updateParameter t before after : unit =
-   if compare_parameter before after <> 0 then
-      paramDisplay t after
-
-let updateParameters t before after : unit =
-   if Array.length before <> Array.length after then
-      Array.iter (paramDisplay t) after
-   else
-      Array.iteri (fun i b -> updateParameter t b (Array.get after i)) before
-
-let updateGroup t (before:group) (after:group) : unit =
-   if not before.active && after.active then
-      showGroup t after
+let rec updateGroup t before after =
+   if not before.active && after.active || Array.length before.subs <> Array.length after.subs then
+      forceUpdateGroup t after
    else if after.active then
-      updateParameters t before.parameters after.parameters
+      Array.iteri (fun i a -> updateSub t (Array.get before.subs i) a) after.subs
 
-let updateGroups t (before:groups) (after:groups) : unit =
-   if Array.length before <> Array.length after then
-      showGroups t after
-   else
-      Array.iteri (fun i b -> updateGroup t b (Array.get after i)) before
-
+and updateSub t before after =
+   match before, after with
+   | Parameter b, Parameter a when compare_parameter b a = 0 -> ()
+   | Parameter _, Parameter _ ->
+      forcedUpdateSub t after
+   | Group b, Group a -> updateGroup t b a
+   | _, Group g -> forceUpdateGroup t g
+   | _, Parameter _ -> forcedUpdateSub t after
 
 (* ===  Predefined controls ==== *)
 
-let percentFormat min max v =
-   (Printf.sprintf "%.2f" (((min +. v *. (max -. min) /. 127.0) *. 100.0))) ^" %"
-
-let numberFormat min max v =
-   Printf.sprintf "%.2f" ((((min +. v *. (max -. min) /. 127.0))))
-
 let numericKnob (name:string) (column:column) ~(min:float) ~(max:float) (start:float) : parameter =
    let start = (start -. min /. (max -. min)) *. 127.0 in
-   { name; kind = Knob column; value = Float (numberFormat,min, max, start); pushed = false; group = None }
+   { name; kind = Knob column; value = Float (Numeric ,min, max, start); pushed = false; group = None }
 
 let numericEncoder (name:string) (column:column) ~(min:float) ~(max:float) (start:float) : parameter =
    let start = (start -. min /. (max -. min)) *. 127.0 in
-   { name; kind = Encoder column; value = Float (numberFormat, min, max, start); pushed = false; group = None }
+   { name; kind = Encoder column; value = Float (Numeric, min, max, start); pushed = false; group = None }
 
 let numericSlider (name:string) (column:column) ~(min:float) ~(max:float) (start:float) : parameter =
    let start = (start -. min /. (max -. min)) *. 127.0 in
-   { name; kind = Slider column; value = Float (numberFormat, min, max, start); pushed = false; group = None }
+   { name; kind = Slider column; value = Float (Numeric, min, max, start); pushed = false; group = None }
 
 let percentualKnob (name:string) (column:column) ~(min:float) ~(max:float) (start:float) : parameter =
    let start = (start -. min /. (max -. min)) *. 127.0 in
-   { name; kind = Knob column; value = Float (percentFormat, min, max, start); pushed = false; group = None }
+   { name; kind = Knob column; value = Float (Percent, min, max, start); pushed = false; group = None }
 
 let percentualEncoder (name:string) (column:column) ~(min:float) ~(max:float) (start:float) : parameter =
    let start = (start -. min /. (max -. min)) *. 127.0 in
-   { name; kind = Encoder column; value = Float (percentFormat, min, max, start); pushed = false; group = None }
+   { name; kind = Encoder column; value = Float (Percent, min, max, start); pushed = false; group = None }
 
 let percentualSlider (name:string) (column:column) ~(min:float) ~(max:float) (start:float) : parameter =
    let start = (start -. min /. (max -. min)) *. 127.0 in
-   { name; kind = Slider column; value = Float (percentFormat, min, max, start); pushed = false; group = None }
+   { name; kind = Slider column; value = Float (Percent, min, max, start); pushed = false; group = None }
 
 let toggleButton (name:string) (side:side) (row:row) (column:column) (start:bool) : parameter =
    { name; kind = Toggle (side, row, column); value = Bool start; pushed = false; group = None }
@@ -617,7 +696,6 @@ let radioButton (name:string) (buttons:(side * row * column) array) (elems:strin
 let blank (column:column) : parameter =
    { name =""; kind = Blank column; value = Bool false; pushed = false; group = None }
 
-
 let enumEncoder (name:string) (column:column) (elems:string array) (start:int) : parameter =
    let n = float_of_int (Array.length elems) in
    let start = float_of_int start -. 1.0 in
@@ -628,16 +706,18 @@ let enumKnob (name:string) (column:column) (elems:string array) (start:int) : pa
    let start = float_of_int start -. 1.0 in
    { name; kind = Knob column; value = Enum (elems, n, start); pushed = false; group = None }
 
-
 let newGroup (name:string) ~(choke:int) ~(active:bool) (parameters:parameters) : group =
-   let parameters = Array.map (fun p -> {p with group = Some name}) parameters in
-   { name; active = active; parameters; choke }
+   let subs = Array.map (fun p -> Parameter { p with group = Some name}) parameters in
+   { name; active = active; subs; choke }
 
-let update (zero:t) (custom_handler: parameters -> groups -> groups) (message:midi_message) : t =
+let makeTopGroup (groups: group array) : group =
+   { name = ""; active = true; choke = -1; subs = Array.map (fun a -> Group a) groups }
+
+let update (zero:t) (custom_handler: parameters -> group -> group) (message:midi_message) : t =
    let initial_groups = zero.groups in
    let modified, groups = applyMessage message [] initial_groups in
    let groups = custom_handler (Array.of_list modified) groups in
-   updateGroups zero initial_groups groups;
+   updateGroup zero initial_groups groups;
    { zero with groups = groups }
 
 let handle_messages (zero:t) custom_handler : float -> int array -> unit =
@@ -647,13 +727,13 @@ let handle_messages (zero:t) custom_handler : float -> int array -> unit =
       (*print_endline (_show_midi_message message);*)
       state := update !state custom_handler message
 
-let openPort (name:string) (groups:groups) (custom_handler:parameters -> groups -> groups) : t option =
+let openPort (name:string) (groups:group) (custom_handler:parameters -> group -> group) : t option =
    match Remidi.openInput name, Remidi.openOutput name with
    | Some input, Some output ->
       let t = { input; output; groups } in
       Primitives.init t;
       Remidi.onMessage input (handle_messages t custom_handler);
-      showGroups t groups;
+      forceUpdateGroup t groups;
       Some t
    | Some input , None ->
       Remidi.closeInput input;

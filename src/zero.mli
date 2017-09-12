@@ -10,16 +10,13 @@ type row =
 
 type column = int
 
-
 type position = side * row * column
 
 type parameter
 
-type parameters = parameter array
-
 type group
 
-type groups = group array
+type sub
 
 type t
 
@@ -51,12 +48,12 @@ val paramInt : parameter -> int
 val paramFloat : parameter -> float
 
 
-val paramFind : groups -> string -> string -> parameter option
+val paramFind : group -> string list -> sub list option
 
-val groupSetActive : groups -> string -> groups
+val groupSetActive : group -> string list -> group
 
 
-val openPort : string -> groups -> (parameters -> groups -> groups) -> t option
+val openPort : string -> group -> (parameter array -> group -> group) -> t option
 
 val numericKnob : string -> column -> min:float -> max:float -> float -> parameter
 
@@ -86,5 +83,7 @@ val enumKnob : string -> column -> string array -> int -> parameter
 
 val blank : column -> parameter
 
-val newGroup : string -> choke:int -> active:bool -> parameters -> group
+val newGroup : string -> choke:int -> active:bool -> parameter array -> group
+
+val makeTopGroup : group array -> group
 
