@@ -1,12 +1,10 @@
-
 type side =
-   | Left
-   | Right
+  | Left
+  | Right
 
 type row =
-   | Top
-   | Bottom
-
+  | Top
+  | Bottom
 
 type column = int
 
@@ -20,38 +18,21 @@ type sub
 
 type t
 
-module Primitives : sig
-
-   val init : t -> unit
-
-   val clear : t -> unit
-
-   val writeLabel : t -> string -> side -> row -> column -> unit
-
-   val setButton : t -> side -> row -> column -> bool -> unit
-
-   val setRing : t -> int -> int -> unit
-
-   val writeLabelRaw : t -> string -> int -> int -> unit
-
-   val setButtonRaw : t -> int -> int -> unit
-
-end
-
-
 val paramName : parameter -> string
+
 val paramGroup : parameter -> string
+
 val paramPath : parameter -> string
 
 val paramString : parameter -> string
-val paramInt : parameter -> int
-val paramFloat : parameter -> float
 
+val paramInt : parameter -> int
+
+val paramFloat : parameter -> float
 
 val paramFind : group -> string list -> sub list option
 
 val groupSetActive : group -> string list -> group
-
 
 val openPort : string -> group -> (parameter array -> group -> group) -> t option
 
@@ -87,3 +68,4 @@ val newGroup : string -> choke:int -> active:bool -> parameter array -> group
 
 val makeTopGroup : group array -> group
 
+val update : t -> unit

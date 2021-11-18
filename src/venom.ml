@@ -1,4 +1,4 @@
-
+(*
 type part =
    | Single
    | Multi
@@ -1144,3 +1144,4 @@ let single =
          (0x01, 0x44), "PatchName [8]"; (* 0 ~ 127 *)
          (0x01, 0x45), "PatchName [9]"; (* 0 ~ 127 *)
       ]
+*)
