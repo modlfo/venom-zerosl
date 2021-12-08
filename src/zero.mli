@@ -60,6 +60,8 @@ val radioButton : string -> position array -> string array -> int -> parameter
 
 val enumEncoder : string -> column -> string array -> int -> parameter
 
+val enumSlider : string -> column -> string array -> int -> parameter
+
 val enumKnob : string -> column -> string array -> int -> parameter
 
 val blank : column -> parameter

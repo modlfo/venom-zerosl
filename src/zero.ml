@@ -372,8 +372,8 @@ let paramDisplay output (parameter : parameter) : unit =
       Primitives.writeLabel output parameter.name Right Top column ;
       Primitives.writeLabel output (paramString parameter) Right Bottom column
   | Toggle (side, row, column) ->
-      Primitives.writeLabel output parameter.name Left Top column ;
-      Primitives.writeLabel output (paramString parameter) Left Bottom column ;
+      Primitives.writeLabel output parameter.name side Top column ;
+      Primitives.writeLabel output (paramString parameter) side Bottom column ;
       Primitives.setButton output side row column (parameBool parameter)
   | Push (side, row, column) ->
       Primitives.writeLabel output parameter.name Left Top column ;
@@ -756,6 +756,12 @@ let enumKnob (name : string) (column : column) (elems : string array) (start : i
   { name; kind = Knob column; value = Enum (elems, n, start); pushed = false; group = None }
 
 
+let enumSlider (name : string) (column : column) (elems : string array) (start : int) : parameter =
+  let n = float_of_int (Array.length elems) in
+  let start = float_of_int start -. 1.0 in
+  { name; kind = Slider column; value = Enum (elems, n, start); pushed = false; group = None }
+
+
 let newGroup (name : string) ~(choke : int) ~(active : bool) (parameters : parameters) : group =
   let subs = Array.map (fun p -> Parameter { p with group = Some name }) parameters in
   { name; active; subs; choke }
@@ -782,7 +788,7 @@ let handle_messages (group : group) input output custom_handler : unit -> unit =
     | None -> ()
     | Some (_, data) ->
         let message = decode data in
-        (*print_endline (_show_midi_message message) ;*)
+        (* print_endline (_show_midi_message message) ; *)
         state := update_state output !state custom_handler message
 
 

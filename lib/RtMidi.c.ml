@@ -104,7 +104,12 @@ let getOutputNames () : string list =
 
 let openInput (name : string) : midi_in option =
   let inputs = getInputNames () in
-  match list_find_index (fun port -> port = name) inputs with
+  let name_n = String.length name in
+  match
+    list_find_index
+      (fun port -> if String.length port <= name_n then port = name else String.sub port 0 name_n = name)
+      inputs
+  with
   | Some index ->
       print_endline ("Opening input '" ^ name ^ "'") ;
       let input = rtmidi_in_create RTMIDI_API_UNSPECIFIED name index in
@@ -115,7 +120,12 @@ let openInput (name : string) : midi_in option =
 
 let openOutput (name : string) : midi_out option =
   let outputs = getOutputNames () in
-  match list_find_index (fun port -> port = name) outputs with
+  let name_n = String.length name in
+  match
+    list_find_index
+      (fun port -> if String.length port <= name_n then port = name else String.sub port 0 name_n = name)
+      outputs
+  with
   | Some index ->
       print_endline ("Opening output '" ^ name ^ "'") ;
       let output = rtmidi_out_create RTMIDI_API_UNSPECIFIED name in
@@ -162,3 +172,15 @@ let getMessage input =
 
 
 let sendMessageList (output : midi_out) (msg : int list) : unit = sendMessage output msg
+
+let noteOff (output : midi_out) channel note velocity =
+  let msg = [ 0x80 lor (0x0F land channel); note land 0x7F; velocity land 0x7F ] in
+  sendMessage output msg
+
+
+let noteOn (output : midi_out) channel note velocity =
+  if velocity = 0 then
+    noteOff output channel note velocity
+  else
+    let msg = [ 0x90 lor (0x0F land channel); note land 0x7F; velocity land 0x7F ] in
+    sendMessage output msg

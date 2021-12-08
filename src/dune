@@ -1,4 +1,4 @@
 (executable
  (name main)
- (modules Main Zero)
+ (modules Main Zero OPL2 OPL2Instr)
  (libraries unix RtMidi ctypes))
