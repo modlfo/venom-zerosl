@@ -16,6 +16,8 @@ let four_bit = Array.init 16 (fun i -> string_of_int i)
 
 let three_bit = Array.init 8 (fun i -> string_of_int i)
 
+let two_bit = Array.init 4 (fun i -> string_of_int i)
+
 let on_off = [| "Off"; "On" |]
 
 let groups =
@@ -41,7 +43,18 @@ let groups =
             ; enumSlider "2-Decay" 6 four_bit 0
             ; enumSlider "2-Sustain" 7 four_bit 0
             ; enumSlider "2-Release" 8 four_bit 0
-            ; toggleButton "EG Type" Right Top 1 false
+            ; toggleButton "1-EG Type" Left Top 1 false
+            ; countButton "1-KSL" Left Top 2 two_bit 0
+            ; toggleButton "2-EG Type" Left Top 3 false
+            ; countButton "2-KSL" Left Top 4 two_bit 0
+            ; toggleButton "1-Vibrato" Left Top 5 false
+            ; toggleButton "1-VibDepth" Left Top 6 false
+            ; toggleButton "2-Vibrato" Left Top 7 false
+            ; toggleButton "2-VibDepth" Left Top 8 false
+            ; toggleButton "1-Tremolo" Left Bottom 5 false
+            ; toggleButton "1-TremDepth" Left Bottom 6 false
+            ; toggleButton "2-Tremolo" Left Bottom 7 false
+            ; toggleButton "2-TremDepth" Left Bottom 8 false
            |]
        ; newGroup
            "Notes"
@@ -114,6 +127,42 @@ let action opl2 (groups : Zero.group) parameter =
   | "/OP/2-Release" ->
       OPL2.set opl2 Release ~offset:(OPL2.getOperatorOffset 1 2) (15 - Zero.paramInt parameter) ;
       groups
+  | "/OP/1-EG Type" ->
+      OPL2.set opl2 EnvelopeType ~offset:(OPL2.getOperatorOffset 1 1) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/2-EG Type" ->
+      OPL2.set opl2 EnvelopeType ~offset:(OPL2.getOperatorOffset 1 2) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/1-KSL" ->
+      OPL2.set opl2 KeyScalingLevel ~offset:(OPL2.getOperatorOffset 1 1) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/2-KSL" ->
+      OPL2.set opl2 KeyScalingLevel ~offset:(OPL2.getOperatorOffset 1 2) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/1-Vibrato" ->
+      OPL2.set opl2 Vibrato ~offset:(OPL2.getOperatorOffset 1 1) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/1-VibDepth" ->
+      OPL2.set opl2 VibratoDepth ~offset:(OPL2.getOperatorOffset 1 1) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/2-Vibrato" ->
+      OPL2.set opl2 Vibrato ~offset:(OPL2.getOperatorOffset 1 2) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/2-VibDepth" ->
+      OPL2.set opl2 VibratoDepth ~offset:(OPL2.getOperatorOffset 1 2) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/1-Tremolo" ->
+      OPL2.set opl2 AM ~offset:(OPL2.getOperatorOffset 1 1) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/1-TremDepth" ->
+      OPL2.set opl2 AMDepth ~offset:(OPL2.getOperatorOffset 1 1) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/2-Tremolo" ->
+      OPL2.set opl2 AM ~offset:(OPL2.getOperatorOffset 1 2) (Zero.paramInt parameter) ;
+      groups
+  | "/OP/2-TremDepth" ->
+      OPL2.set opl2 AMDepth ~offset:(OPL2.getOperatorOffset 1 2) (Zero.paramInt parameter) ;
+      groups
   | "/Notes/1" ->
       OPL2.noteOn opl2 0 24 (100 * Zero.paramInt parameter) ;
       groups
@@ -149,7 +198,11 @@ let action opl2 (groups : Zero.group) parameter =
       OPL2.loadInstrument opl2 1 OPL2Instr.instruments.(!patch) ;
       let () = print_endline ("Loading :" ^ string_of_int !patch) in
       groups
-  | _ -> groups
+  | _ ->
+      let () =
+        print_endline ("Unknown message: " ^ Zero.paramPath parameter ^ " " ^ string_of_int (Zero.paramInt parameter))
+      in
+      groups
 
 
 let actions opl2 modified group =
